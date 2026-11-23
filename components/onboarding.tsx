@@ -1,7 +1,7 @@
 'use client';
 
 import {useState, type FormEvent} from 'react';
-import {ArrowRight, Check, LogOut, Search, Zap} from 'lucide-react';
+import {ArrowRight, Check, LogOut, Search} from 'lucide-react';
 import {authenticate} from '../lib/accounts';
 import {games} from '../lib/games';
 import {Button} from './button';
@@ -40,7 +40,7 @@ export function AccountGate({onSuccess}: {onSuccess:(login:string)=>void}) {
     } finally { setBusy(false); }
   }
   return <div className="gate">
-    <div className="gate-art" style={{backgroundImage: "linear-gradient(180deg,#100e1a35,#100e1aa0),url(" + (process.env.NEXT_PUBLIC_SKILLFORGE_BASE_PATH ?? "") + "/forge-hero.webp)"}}><div className="brand"><span className="brand-icon"><Zap size={21}/></span>SKILLFORGE</div></div>
+    <header className="gate-top"><div className="brand"><span className="brand-icon" aria-hidden="true">SF</span>Skillforge</div></header>
     <div className="gate-body">
       <div className="gate-form">
         <h1>{signIn?'Вход':'Регистрация'}</h1>

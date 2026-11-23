@@ -5,7 +5,6 @@ const config = {
   devIndicators: false,
   agentRules: false,
   ...(pagesExport ? { output: 'export', basePath } : {}),
-  env: { NEXT_PUBLIC_SKILLFORGE_BASE_PATH: basePath },
 };
 
 export default config;
