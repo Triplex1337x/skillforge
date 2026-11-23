@@ -19,7 +19,6 @@ const navigation = [
   {id:'settings',label:'Настройки',icon:Settings}
 ] as const;
 type Screen = typeof navigation[number]['id'];
-const mainNavigation: Screen[] = ['dashboard','matches','analytics','games','streams'];
 const demo = demoMatches();
 const format = (n: number | null, decimals=0) => n === null ? '—' : n.toLocaleString('ru-RU',{maximumFractionDigits:decimals});
 const shortDate = (date: string) => new Date(date+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
@@ -98,24 +97,28 @@ function Workspace({login,onExit}:{login:string;onExit:()=>void}) {
   if (!ready) return <div className="loading-screen" role="status">SKILLFORGE</div>;
   if (!data.gameId) return <GameGate onExit={onExit} onChoose={id=>{selectGame(id);navigate('dashboard');}}/>;
   return <div className="shell">
+    <aside className="side-nav" aria-label="Боковое меню">
+      <a className="brand" href="#dashboard" onClick={event=>{event.preventDefault();navigate('dashboard');}}><span className="brand-icon" aria-hidden="true">SF</span>Skillforge</a>
+      <SectionLinks screen={screen} navigate={navigate} onExit={onExit}/>
+    </aside>
     <header className="site-header">
       <div className="header-inner">
-        <a className="brand" href="#dashboard" onClick={event=>{event.preventDefault();navigate('dashboard');}}><span className="brand-icon" aria-hidden="true">SF</span>Skillforge</a>
-        <nav className="main-nav" aria-label="Основные разделы">
-          {mainNavigation.map(id=><a key={id} href={'#'+id} onClick={event=>{event.preventDefault();navigate(id);}} aria-current={screen===id?'page':undefined}>{id==='matches'?'Матчи':navigation.find(item=>item.id===id)?.label}</a>)}
-        </nav>
-        <div className="account-actions">
-          <button className="avatar" onClick={()=>navigate('profile')} aria-label="Открыть профиль">{Array.from(data.name)[0]?.toUpperCase() || 'И'}</button>
-          <div className="menu-wrap" onKeyDown={event=>{if(event.key==='Escape')setMenuOpen(false);}}>
-            <Button variant="ghost" className="icon-button" aria-label={menuOpen?'Закрыть меню':'Другие разделы'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><Menu size={20}/></Button>
-            {menuOpen && <><button className="menu-dismiss" aria-label="Закрыть список разделов" onClick={()=>setMenuOpen(false)}/><nav className="menu-popover" aria-label="Другие разделы">
-              {navigation.filter(item=>!mainNavigation.includes(item.id)).map(({id,label,icon:Icon})=><a key={id} href={'#'+id} aria-current={screen===id?'page':undefined} onClick={event=>{event.preventDefault();navigate(id);}}><Icon size={16}/>{label}</a>)}
-              <button onClick={onExit}><LogOut size={16}/>Выйти</button>
-            </nav></>}
-          </div>
+        <div className="header-context">
+          <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}>
+            <Dialog.Trigger asChild><Button variant="ghost" className="icon-button mobile-menu-trigger" aria-label="Открыть меню"><Menu size={20}/></Button></Dialog.Trigger>
+            <Dialog.Portal><Dialog.Overlay className="drawer-overlay"/><Dialog.Content className="mobile-drawer">
+              <div className="drawer-head"><Dialog.Title>Skillforge</Dialog.Title><Dialog.Close asChild><Button variant="ghost" className="icon-button" aria-label="Закрыть меню"><X size={20}/></Button></Dialog.Close></div>
+              <Dialog.Description className="sr-only">Разделы платформы</Dialog.Description>
+              <SectionLinks screen={screen} navigate={navigate} onExit={onExit}/>
+            </Dialog.Content></Dialog.Portal>
+          </Dialog.Root>
+          <a className="brand mobile-brand" href="#dashboard" onClick={event=>{event.preventDefault();navigate('dashboard');}}>Skillforge</a>
+          <span className="header-section">{pageTitle}</span>
         </div>
+        <button className="avatar" onClick={()=>navigate('profile')} aria-label="Открыть профиль">{Array.from(data.name)[0]?.toUpperCase() || 'И'}</button>
       </div>
     </header>
+
     <div className="workspace">
       <main key={screen} className="screen-enter">
         {gameWorkspace ? <section className="player-heading">
@@ -162,11 +165,24 @@ function Workspace({login,onExit}:{login:string;onExit:()=>void}) {
 
       </main>
     </div>
+    <nav className="mobile-dock" aria-label="Быстрый доступ">
+      {([{id:'dashboard',label:'Обзор',icon:LayoutDashboard},{id:'matches',label:'Матчи',icon:History},{id:'streams',label:'Эфиры',icon:Radio}] as const).map(({id,label,icon:Icon})=><a key={id} href={'#'+id} aria-current={screen===id?'page':undefined} onClick={event=>{event.preventDefault();navigate(id);}}><Icon size={19}/><span>{label}</span></a>)}
+      <button onClick={openEditor}><Plus size={20}/><span>Записать</span></button>
+    </nav>
+
     {editor && <MatchEditor editor={editor} close={() => setEditor(null)} save={saveMatch}/>}
     <Dialog.Root open={Boolean(deleting)} onOpenChange={open=>{if(!open)setDeleting(null);}}><Dialog.Portal><Dialog.Overlay className="dialog-overlay"/><Dialog.Content className="dialog"><Dialog.Title>Удалить матч?</Dialog.Title><Dialog.Description>Запись за {deleting && shortDate(deleting.date)} будет удалена из истории и расчётов.</Dialog.Description><div className="dialog-actions"><Dialog.Close asChild><Button variant="outline">Отмена</Button></Dialog.Close><Button onClick={()=>{if(deleting){setData(previous=>({...previous,matches:previous.matches.filter(match=>match.id!==deleting.id)}));setLastDeleted(deleting);setDeleting(null);setMessage('Матч удалён.');}}}>Удалить</Button></div></Dialog.Content></Dialog.Portal></Dialog.Root>
     {message && <div className="toast" role="status">{message}{lastDeleted && message === 'Матч удалён.' && <button className='undo' onClick={()=>{setData(previous=>({...previous,matches:[lastDeleted,...previous.matches]}));setLastDeleted(null);setMessage('Матч восстановлен.');}}>Отменить</button>}<button aria-label="Закрыть уведомление" onClick={() => setMessage('')}><X size={17}/></button></div>}
   </div>;
 }
+
+function SectionLinks({screen,navigate,onExit}:{screen:Screen;navigate:(id:Screen)=>void;onExit:()=>void}) {
+  return <nav className="section-links" aria-label="Разделы">
+    {navigation.map(({id,label,icon:Icon})=><a key={id} href={'#'+id} aria-current={screen===id?'page':undefined} onClick={event=>{event.preventDefault();navigate(id);}}><Icon size={17}/><span>{label}</span></a>)}
+    <button className="sign-out" onClick={onExit}><LogOut size={17}/>Выйти</button>
+  </nav>;
+}
+
 
 function Stat({title,value,detail}: {title:string;value:string;detail?:string}) {
   return <div className="stat"><dt>{title}</dt><dd>{value}</dd>{detail && <div className="stat-detail">{detail}</div>}</div>;
@@ -191,7 +207,7 @@ function Chart({game,matches,period,setPeriod,metric,setMetric}:{game:GameAdapte
   return <section className="panel chart-panel">
     <div className="panel-head"><div><h2>График результатов</h2><p>{chosen?.label ?? 'Рейтинг мастерства · до 10 последних матчей'}</p></div><div className="chart-controls"><div className="select-wrap"><CalendarDays size={15}/><select aria-label="Период графика" value={period} onChange={e=>setPeriod(e.target.value)}><option value="7">7 дней</option><option value="30">30 дней</option><option value="all">Всё время</option></select><ChevronDown size={13}/></div></div></div>
     <div className="chart-legend"><span/>Показатель<select aria-label="Показатель графика" value={metric} onChange={e=>setMetric(e.target.value)}><option value="score">Рейтинг</option>{game.metrics.map(entry=><option key={entry.key} value={entry.key}>{entry.label}</option>)}</select></div>
-    <div className="chart-body">{series.some(point=>point.value!==null)?<ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}><AreaChart data={series} margin={{left:-19,right:12,top:12,bottom:0}}><defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7bccaa" stopOpacity={.26}/><stop offset="100%" stopColor="#7bccaa" stopOpacity={0}/></linearGradient></defs><CartesianGrid vertical={false} stroke="#2b343c" strokeDasharray="4 5"/><XAxis dataKey="date" tickLine={false} axisLine={false} tick={{fill:'#a0adb4',fontSize:12}} minTickGap={22}/><YAxis tickLine={false} axisLine={false} tick={{fill:'#a0adb4',fontSize:12}} domain={chosen?[0,'auto']:[0,1000]}/><Tooltip contentStyle={{background:'#171f26',border:'1px solid #384650',borderRadius:9,color:'#fff'}} labelStyle={{color:'#eee9fb'}} formatter={value=>[format(Number(value),1),chosen?.label ?? 'Рейтинг']}/><Area type="monotone" dataKey="value" stroke="#87d7b3" strokeWidth={2} fill="url(#trend-fill)" dot={series.length===1} activeDot={{r:5}}/></AreaChart></ResponsiveContainer>:<div className="empty"><Activity size={26}/><p>За этот период нет данных для графика.</p></div>}</div>
+    <div className="chart-body">{series.some(point=>point.value!==null)?<ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}><AreaChart data={series} margin={{left:-19,right:12,top:12,bottom:0}}><defs><linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a475ff" stopOpacity={.26}/><stop offset="100%" stopColor="#a475ff" stopOpacity={0}/></linearGradient></defs><CartesianGrid vertical={false} stroke="#332940" strokeDasharray="4 5"/><XAxis dataKey="date" tickLine={false} axisLine={false} tick={{fill:'#a69aba',fontSize:12}} minTickGap={22}/><YAxis tickLine={false} axisLine={false} tick={{fill:'#a69aba',fontSize:12}} domain={chosen?[0,'auto']:[0,1000]}/><Tooltip contentStyle={{background:'#201a30',border:'1px solid #4d3b64',borderRadius:9,color:'#fff'}} labelStyle={{color:'#eee9fb'}} formatter={value=>[format(Number(value),1),chosen?.label ?? 'Рейтинг']}/><Area type="monotone" dataKey="value" stroke="#af89ff" strokeWidth={2} fill="url(#trend-fill)" dot={series.length===1} activeDot={{r:5}}/></AreaChart></ResponsiveContainer>:<div className="empty"><Activity size={26}/><p>За этот период нет данных для графика.</p></div>}</div>
   </section>;
 }
 function MatchRows({matches,demo,onEdit,onDelete}:{matches:Match[];demo:boolean;onEdit:(match:Match)=>void;onDelete:(match:Match)=>void}) {
